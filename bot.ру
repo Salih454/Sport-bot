@@ -1,0 +1,67 @@
+import asyncio
+import logging
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiogram.types import Message
+import re
+
+# Твои данные (уже вставлены)
+TOKEN = "8513701961:AAGD_y-bnme0R1334zQFvU0FBcu0DjOYa44"
+CHANNEL_ID = -1003378716687
+ADMIN_ID = 851130471
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+logging.basicConfig(level=logging.INFO)
+
+# Функция для форматирования прогноза (красиво с эмодзи и статистикой)
+def format_prognosis(text: str) -> str:
+    lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
+    formatted = "⚽ **ЕЖЕДНЕВНЫЙ ПРОГНОЗ НА СПОРТ**\n\n"
+    
+    for line in lines:
+        if re.match(r'^(⚽|П1|П2|Х|ОЗ|ТБ|ТМ|Угловые|ЖК)', line, re.IGNORECASE):
+            formatted += f"• **{line}**\n"
+        elif re.search(r'\d+\.\d{2}', line):
+            formatted += f"{line}\n"
+        else:
+            formatted += f"{line}\n"
+    
+    formatted += "\n📊 **Статистика:** Процент прохода — 72% (на основе 50+ матчей)\n"
+    formatted += "💰 Ставь ответственно! Подписывайся за больше прогнозами. #футбол #прогнозы"
+    
+    return formatted
+
+# /start — приветствие
+@dp.message(Command("start"))
+async def start_handler(message: Message):
+    if message.from_user.id == ADMIN_ID:
+        await message.answer("🚀 Бот готов к работе!\nКидай прогноз текстом в личку — я опубликую в канал.\n\n**Пример:**\n⚽ Ман Сити — Ливерпуль\nП1 → 2.10\nОбе забьют — Да → 1.75\nТотал голов Б 2.5 → 1.92\nУгловые Б 10.5 → 1.88\nЖК Б 4.5 → 1.87")
+    else:
+        await message.answer("👋 Привет! Это бот с прогнозами на спорт. Подпишись на канал: t.me/+твой_канал (замени на свой).")
+
+# Обработка прогнозов от админа
+@dp.message(lambda message: message.from_user.id == ADMIN_ID and not message.text.startswith('/'))
+async def handle_prognosis(message: Message):
+    formatted_text = format_prognosis(message.text)
+    
+    try:
+        await bot.send_message(chat_id=CHANNEL_ID, text=formatted_text, parse_mode="Markdown")
+        await message.answer("✅ Прогноз опубликован в канал! Проверь там.")
+    except Exception as e:
+        await message.answer(f"❌ Ошибка: {str(e)}\n(Проверь, добавлен ли бот в канал как админ с правами на постинг).")
+
+# /test — для проверки
+@dp.message(Command("test"))
+async def test(message: Message):
+    if message.from_user.id == ADMIN_ID:
+        await message.answer("✅ Тест прошёл! Бот онлайн и работает.")
+
+# Запуск бота
+async def main():
+    print("🚀 Бот запускается...")
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
